@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Anti Double Click Overlay",
+  "description": "Adds a temporary overlay and disables form submit buttons until the user moves the mouse or a timer expires.",
+  "version": "1.0.0",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["antidoubleclick.js", "content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

