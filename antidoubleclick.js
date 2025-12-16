@@ -55,6 +55,23 @@
                 overlay.style.zIndex = '99999';
                 overlay.style.display = 'none';
                 overlay.style.pointerEvents = 'auto';
+                const notice = document.createElement('div');
+                notice.textContent = 'Внимание: прочтите внимательно, на что идёт двойной клик.';
+                notice.style.position = 'absolute';
+                notice.style.top = '30%';
+                notice.style.left = '50%';
+                notice.style.transform = 'translateX(-50%)';
+                notice.style.background = 'rgba(0, 0, 0, 0.7)';
+                notice.style.color = '#fff';
+                notice.style.padding = '12px 16px';
+                notice.style.borderRadius = '12px';
+                notice.style.fontSize = '16px';
+                notice.style.fontWeight = '700';
+                notice.style.boxShadow = '0 8px 24px rgba(0,0,0,0.25)';
+                notice.style.pointerEvents = 'none';
+                notice.style.textAlign = 'center';
+                notice.style.maxWidth = '520px';
+                overlay.appendChild(notice);
                 document.body.appendChild(overlay);
                 overlayAdded = true;
             }
