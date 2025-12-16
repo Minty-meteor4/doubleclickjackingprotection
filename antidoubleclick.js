@@ -3,31 +3,10 @@
  * Description : Displays a semi-transparent overlay to block
  *               user interaction when a page opens,
  *               then automatically removes it after a delay
- *               or mouse movement.
+ *               or specific events.
  * Copyright    : (c) 2025, bexxo.ch
  * Author       : bexxo.ch
  * License      : MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- * @version      : 1.0
- * @date         : 2025.01.20
  */
 
 (function() {
@@ -35,27 +14,38 @@
      * Initializes the script with the given parameters.
      * @param {Object} options
      * @param {number} [options.distance=25]    - Distance in pixels to unlock via mouse movement
-     * @param {number} [options.time=1500]         - Time in milliseconds before automatic unlocking (if no movement occurs)
-     * @param {boolean} [options.showOverlay=true] - Whether or not to display the overlay on load
-     * @param {boolean} [options.disableButton=true] - Whether or not to disable buttons initially
-     * @param {string} [options.overlayColor='rgba(0,0,0,0.5)'] - CSS color of the overlay
+     * @param {number} [options.time=1500]      - Time in milliseconds before automatic unlocking
+     * @param {boolean} [options.showOverlay=true]
+     * @param {boolean} [options.disableButton=true]
+     * @param {string} [options.overlayColor='rgba(0,0,0,0.5)']
+     * @param {boolean} [options.unlockOnMouseMove=true]
+     * @param {boolean} [options.unlockOnTimer=true]
+     * @param {boolean} [options.unlockOnDblClick=true]
+     * @param {boolean} [options.unlockOnVisibilityChange=false]
+     * @param {boolean} [options.unlockOnFocusChange=false]
      */
     function initOverlayBlock({
-              distance = 25,
-              time = 1500,
-              showOverlay = true,
-              disableButton = true,
-              overlayColor = 'rgba(0, 0, 0, 0.5)'
-          } = {})
-    {
-        document.addEventListener('DOMContentLoaded', () => {
+        distance = 25,
+        time = 1500,
+        showOverlay = true,
+        disableButton = true,
+        overlayColor = 'rgba(0, 0, 0, 0.5)',
+        unlockOnMouseMove = true,
+        unlockOnTimer = true,
+        unlockOnDblClick = true,
+        unlockOnVisibilityChange = false,
+        unlockOnFocusChange = false
+    } = {}) {
+        const startOverlay = () => {
+            // -----------------------------------------------------------------
+            // 1) CREATE THE SEMI-TRANSPARENT OVERLAY (LAYER)
+            // -----------------------------------------------------------------
+            const overlay = document.createElement('div');
+            let overlayAdded = false;
+            let isOverlayActive = false;
 
-        // ---------------------------------------------------------------------
-        // 1) CREATE THE SEMI-TRANSPARENT OVERLAY (LAYER)
-        // ---------------------------------------------------------------------
-        const overlay = document.createElement('div');
-        function addLayerProtect() {
-            if (showLayerProtect) {
+            function addLayerProtect() {
+                if (overlayAdded || !showOverlay) return;
                 overlay.style.position = 'fixed';
                 overlay.style.top = '0';
                 overlay.style.left = '0';
@@ -66,124 +56,161 @@
                 overlay.style.display = 'none';
                 overlay.style.pointerEvents = 'auto';
                 document.body.appendChild(overlay);
+                overlayAdded = true;
             }
-        }
 
-        let isLayerProtectActive = false;
-        function showLayerProtect() {
-            if (isLayerProtectActive) return;
-            if (!showOverlay) return;
-            addLayerProtect();
-            isOverlayActive = true;
-            overlay.style.display = 'block';
-        }
-
-        function hideLayerProtect() {
-            if (!showOverlay) return;
-            overlay.style.display = 'none';
-        }
-
-        // ---------------------------------------------------------------------
-        // 2) DISABLE SUBMIT BUTTONS
-        // ---------------------------------------------------------------------
-        const buttons = document.querySelectorAll('form button, form input[type="submit"]');
-        function disableButtons() {
-            if (disableButton) {
-                buttons.forEach(btn => {
-                    btn.disabled = true;
-                    btn.style.cursor = 'not-allowed';
-                });
+            function showLayerProtect() {
+                if (isOverlayActive || !showOverlay) return;
+                addLayerProtect();
+                overlay.style.display = 'block';
+                isOverlayActive = true;
             }
-        }
-        function enableButtons() {
-            if (disableButton) {
-                buttons.forEach(btn => {
-                    btn.disabled = false;
-                    btn.style.cursor = 'pointer';
-                });
+
+            function hideLayerProtect() {
+                if (!showOverlay) return;
+                overlay.style.display = 'none';
+                isOverlayActive = false;
             }
-        }
 
-        // ---------------------------------------------------------------------
-        // 3) FUNCTION TO REMOVE THE OVERLAY + REACTIVATE BUTTONS
-        //    AND REMOVE EVENT LISTENERS
-        // ---------------------------------------------------------------------
-        let removeOverlayTimeout = null;
-        let initialMousePosition = null;
-
-        function removeOverlayAndEvents() {
-            // Cancel any existing timer
-            if (removeOverlayTimeout) {
-                clearTimeout(removeOverlayTimeout);
-                removeOverlayTimeout = null;
+            // -----------------------------------------------------------------
+            // 2) DISABLE SUBMIT BUTTONS
+            // -----------------------------------------------------------------
+            const buttons = document.querySelectorAll('form button, form input[type="submit"]');
+            function disableButtons() {
+                if (disableButton) {
+                    buttons.forEach(btn => {
+                        btn.disabled = true;
+                        btn.style.cursor = 'not-allowed';
+                    });
+                }
             }
-            // Hide the overlay and reactivate buttons
-            hideLayerProtect();
-            enableButtons();
-            // Remove all listeners to avoid infinite re-calls
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            document.removeEventListener('mousemove', handleMouseMove);
-        }
+            function enableButtons() {
+                if (disableButton) {
+                    buttons.forEach(btn => {
+                        btn.disabled = false;
+                        btn.style.cursor = 'pointer';
+                    });
+                }
+            }
 
-        // ---------------------------------------------------------------------
-        // 4) UNLOCK LOGIC: EITHER NO MOVEMENT FOR X SECONDS, OR
-        //    MOUSE MOVEMENT OF distance PIXELS OR MORE
-        // ---------------------------------------------------------------------
-        function handleVisibilityChange() {
-            // If the tab becomes visible, (re)start the unlock logic
-            if (!document.hidden && isOverlayActive) {
+            // -----------------------------------------------------------------
+            // 3) FUNCTION TO REMOVE THE OVERLAY + REACTIVATE BUTTONS
+            //    AND REMOVE EVENT LISTENERS
+            // -----------------------------------------------------------------
+            let removeOverlayTimeout = null;
+            let initialMousePosition = null;
+            let hasLostFocus = false;
+
+            function removeOverlayAndEvents() {
+                if (removeOverlayTimeout) {
+                    clearTimeout(removeOverlayTimeout);
+                    removeOverlayTimeout = null;
+                }
+                hideLayerProtect();
+                enableButtons();
+                initialMousePosition = null;
+                if (unlockOnTimer || unlockOnVisibilityChange) {
+                    document.removeEventListener('visibilitychange', handleVisibilityChange);
+                }
+                if (unlockOnMouseMove) {
+                    document.removeEventListener('mousemove', handleMouseMove);
+                }
+                if (unlockOnDblClick) {
+                    document.removeEventListener('dblclick', handleDoubleClick);
+                }
+                if (unlockOnFocusChange) {
+                    window.removeEventListener('blur', handleWindowBlur);
+                    window.removeEventListener('focus', handleWindowFocus);
+                }
+            }
+
+            // -----------------------------------------------------------------
+            // 4) UNLOCK LOGIC
+            // -----------------------------------------------------------------
+            function handleVisibilityChange() {
+                if (document.hidden) {
+                    hasLostFocus = true;
+                }
+                if (!document.hidden && isOverlayActive) {
+                    if (unlockOnVisibilityChange) {
+                        removeOverlayAndEvents();
+                    } else if (unlockOnTimer) {
+                        lancerTimerDeblocage();
+                    }
+                }
+            }
+
+            function lancerTimerDeblocage() {
+                if (!unlockOnTimer) return;
+                if (removeOverlayTimeout) clearTimeout(removeOverlayTimeout);
+                removeOverlayTimeout = setTimeout(() => {
+                    removeOverlayAndEvents();
+                }, time);
+            }
+
+            function handleMouseMove(e) {
+                if (!unlockOnMouseMove) return;
+                if (!initialMousePosition) {
+                    initialMousePosition = { x: e.clientX, y: e.clientY };
+                    return;
+                }
+                const dx = e.clientX - initialMousePosition.x;
+                const dy = e.clientY - initialMousePosition.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist >= distance) {
+                    removeOverlayAndEvents();
+                }
+            }
+
+            function handleDoubleClick() {
+                if (!unlockOnDblClick) return;
+                removeOverlayAndEvents();
+            }
+
+            function handleWindowBlur() {
+                hasLostFocus = true;
+            }
+
+            function handleWindowFocus() {
+                if (!unlockOnFocusChange) return;
+                if (hasLostFocus && isOverlayActive) {
+                    removeOverlayAndEvents();
+                }
+            }
+
+            // -----------------------------------------------------------------
+            // 5) INITIAL ACTIVATION + SETTING UP LISTENERS
+            // -----------------------------------------------------------------
+            if (unlockOnTimer || unlockOnVisibilityChange) {
+                document.addEventListener('visibilitychange', handleVisibilityChange);
+            }
+            if (unlockOnMouseMove) {
+                document.addEventListener('mousemove', handleMouseMove);
+            }
+            if (unlockOnDblClick) {
+                document.addEventListener('dblclick', handleDoubleClick);
+            }
+            if (unlockOnFocusChange) {
+                window.addEventListener('blur', handleWindowBlur);
+                window.addEventListener('focus', handleWindowFocus);
+            }
+
+            if (!document.hidden) {
+                showLayerProtect();
+                disableButtons();
                 lancerTimerDeblocage();
+            } else {
+                showLayerProtect();
+                disableButtons();
             }
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', startOverlay, { once: true });
+        } else {
+            startOverlay();
         }
-
-        function lancerTimerDeblocage() {
-            // Cancel any existing timer and start a new one
-            if (removeOverlayTimeout) clearTimeout(removeOverlayTimeout);
-
-            // Start a timer (if no movement, remove the overlay)
-            removeOverlayTimeout = setTimeout(() => {
-                removeOverlayAndEvents();
-                //console.log(`Overlay removed after ${time}ms without movement`);
-            }, time);
-        }
-
-        function handleMouseMove(e) {
-            // Record initial mouse position on first movement
-            if (!initialMousePosition) {
-                initialMousePosition = { x: e.clientX, y: e.clientY };
-                return;
-            }
-            // Calculate the distance moved
-            const dx = e.clientX - initialMousePosition.x;
-            const dy = e.clientY - initialMousePosition.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            // If distance >= configured "distance", immediately remove the overlay
-            if (dist >= distance) {
-                //console.log(`Overlay removed after movement of ${distance}px`);
-                removeOverlayAndEvents();
-            }
-        }
-
-        // ---------------------------------------------------------------------
-        // 5) INITIAL ACTIVATION + SETTING UP LISTENERS
-        // ---------------------------------------------------------------------
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        document.addEventListener('mousemove', handleMouseMove);
-
-        // If the document is visible, activate protections
-        if (!document.hidden) {
-            showLayerProtect();
-            disableButtons();
-            lancerTimerDeblocage();
-        }
-        // If the document is not visible, activate protections
-        else {
-            showLayerProtect();
-            disableButtons();
-        }
-
-        });
     }
 
     // Attach this function to window (or globalThis) to call it from an external page

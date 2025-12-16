@@ -3,31 +3,10 @@
  * Description : Displays a semi-transparent overlay to block
  *               user interaction when a page opens,
  *               then automatically removes it after a delay
- *               or mouse movement.
+ *               or specific events.
  * Copyright    : (c) 2025, bexxo.ch
  * Author       : bexxo.ch
  * License      : MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- * @version      : 1.0
- * @date         : 2025.01.20
  */
 
 (function() {
@@ -35,23 +14,32 @@
      * Initializes the script with the given parameters.
      * @param {Object} options
      * @param {number} [options.distance=25]    - Distance in pixels to unlock via mouse movement
-     * @param {number} [options.time=1500]         - Time in milliseconds before automatic unlocking (if no movement occurs)
-     * @param {boolean} [options.showOverlay=true] - Whether or not to display the overlay on load
-     * @param {boolean} [options.disableButton=true] - Whether or not to disable buttons initially
-     * @param {string} [options.overlayColor='rgba(0,0,0,0.5)'] - CSS color of the overlay
+     * @param {number} [options.time=1500]      - Time in milliseconds before automatic unlocking
+     * @param {boolean} [options.showOverlay=true]
+     * @param {boolean} [options.disableButton=true]
+     * @param {string} [options.overlayColor='rgba(0,0,0,0.5)']
+     * @param {boolean} [options.unlockOnMouseMove=true]
+     * @param {boolean} [options.unlockOnTimer=true]
+     * @param {boolean} [options.unlockOnDblClick=true]
+     * @param {boolean} [options.unlockOnVisibilityChange=false]
+     * @param {boolean} [options.unlockOnFocusChange=false]
      */
     function initOverlayBlock({
-              distance = 25,
-              time = 1500,
-              showOverlay = true,
-              disableButton = true,
-              overlayColor = 'rgba(0, 0, 0, 0.5)'
-          } = {})
-    {
+        distance = 25,
+        time = 1500,
+        showOverlay = true,
+        disableButton = true,
+        overlayColor = 'rgba(0, 0, 0, 0.5)',
+        unlockOnMouseMove = true,
+        unlockOnTimer = true,
+        unlockOnDblClick = true,
+        unlockOnVisibilityChange = false,
+        unlockOnFocusChange = false
+    } = {}) {
         const startOverlay = () => {
-            // ---------------------------------------------------------------------
+            // -----------------------------------------------------------------
             // 1) CREATE THE SEMI-TRANSPARENT OVERLAY (LAYER)
-            // ---------------------------------------------------------------------
+            // -----------------------------------------------------------------
             const overlay = document.createElement('div');
             let overlayAdded = false;
             let isOverlayActive = false;
@@ -84,9 +72,9 @@
                 isOverlayActive = false;
             }
 
-            // ---------------------------------------------------------------------
+            // -----------------------------------------------------------------
             // 2) DISABLE SUBMIT BUTTONS
-            // ---------------------------------------------------------------------
+            // -----------------------------------------------------------------
             const buttons = document.querySelectorAll('form button, form input[type="submit"]');
             function disableButtons() {
                 if (disableButton) {
@@ -105,12 +93,13 @@
                 }
             }
 
-            // ---------------------------------------------------------------------
+            // -----------------------------------------------------------------
             // 3) FUNCTION TO REMOVE THE OVERLAY + REACTIVATE BUTTONS
             //    AND REMOVE EVENT LISTENERS
-            // ---------------------------------------------------------------------
+            // -----------------------------------------------------------------
             let removeOverlayTimeout = null;
             let initialMousePosition = null;
+            let hasLostFocus = false;
 
             function removeOverlayAndEvents() {
                 if (removeOverlayTimeout) {
@@ -120,21 +109,39 @@
                 hideLayerProtect();
                 enableButtons();
                 initialMousePosition = null;
-                document.removeEventListener('visibilitychange', handleVisibilityChange);
-                document.removeEventListener('mousemove', handleMouseMove);
+                if (unlockOnTimer || unlockOnVisibilityChange) {
+                    document.removeEventListener('visibilitychange', handleVisibilityChange);
+                }
+                if (unlockOnMouseMove) {
+                    document.removeEventListener('mousemove', handleMouseMove);
+                }
+                if (unlockOnDblClick) {
+                    document.removeEventListener('dblclick', handleDoubleClick);
+                }
+                if (unlockOnFocusChange) {
+                    window.removeEventListener('blur', handleWindowBlur);
+                    window.removeEventListener('focus', handleWindowFocus);
+                }
             }
 
-            // ---------------------------------------------------------------------
-            // 4) UNLOCK LOGIC: EITHER NO MOVEMENT FOR X SECONDS, OR
-            //    MOUSE MOVEMENT OF distance PIXELS OR MORE
-            // ---------------------------------------------------------------------
+            // -----------------------------------------------------------------
+            // 4) UNLOCK LOGIC
+            // -----------------------------------------------------------------
             function handleVisibilityChange() {
+                if (document.hidden) {
+                    hasLostFocus = true;
+                }
                 if (!document.hidden && isOverlayActive) {
-                    lancerTimerDeblocage();
+                    if (unlockOnVisibilityChange) {
+                        removeOverlayAndEvents();
+                    } else if (unlockOnTimer) {
+                        lancerTimerDeblocage();
+                    }
                 }
             }
 
             function lancerTimerDeblocage() {
+                if (!unlockOnTimer) return;
                 if (removeOverlayTimeout) clearTimeout(removeOverlayTimeout);
                 removeOverlayTimeout = setTimeout(() => {
                     removeOverlayAndEvents();
@@ -142,6 +149,7 @@
             }
 
             function handleMouseMove(e) {
+                if (!unlockOnMouseMove) return;
                 if (!initialMousePosition) {
                     initialMousePosition = { x: e.clientX, y: e.clientY };
                     return;
@@ -155,11 +163,38 @@
                 }
             }
 
-            // ---------------------------------------------------------------------
+            function handleDoubleClick() {
+                if (!unlockOnDblClick) return;
+                removeOverlayAndEvents();
+            }
+
+            function handleWindowBlur() {
+                hasLostFocus = true;
+            }
+
+            function handleWindowFocus() {
+                if (!unlockOnFocusChange) return;
+                if (hasLostFocus && isOverlayActive) {
+                    removeOverlayAndEvents();
+                }
+            }
+
+            // -----------------------------------------------------------------
             // 5) INITIAL ACTIVATION + SETTING UP LISTENERS
-            // ---------------------------------------------------------------------
-            document.addEventListener('visibilitychange', handleVisibilityChange);
-            document.addEventListener('mousemove', handleMouseMove);
+            // -----------------------------------------------------------------
+            if (unlockOnTimer || unlockOnVisibilityChange) {
+                document.addEventListener('visibilitychange', handleVisibilityChange);
+            }
+            if (unlockOnMouseMove) {
+                document.addEventListener('mousemove', handleMouseMove);
+            }
+            if (unlockOnDblClick) {
+                document.addEventListener('dblclick', handleDoubleClick);
+            }
+            if (unlockOnFocusChange) {
+                window.addEventListener('blur', handleWindowBlur);
+                window.addEventListener('focus', handleWindowFocus);
+            }
 
             if (!document.hidden) {
                 showLayerProtect();
@@ -169,7 +204,6 @@
                 showLayerProtect();
                 disableButtons();
             }
-
         };
 
         if (document.readyState === 'loading') {
